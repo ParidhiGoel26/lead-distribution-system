@@ -33,7 +33,9 @@ Fair allocation uses a **persisted cursor** (`FairRotationState`) — not random
 
 ## Tech stack
 
-- Next.js 15, React 19, MongoDB, Prisma
+- Next.js
+- React
+- MongoDB, Prisma
 
 ## Setup
 
@@ -102,15 +104,6 @@ WEBHOOK_SECRET=your-secret
 
 Quota reset is **only** through `POST /api/webhooks/payment-confirmed` (or test panel proxy). Not exposed on the customer form.
 
-External webhook example:
-
-```bash
-curl -X POST http://localhost:3000/api/webhooks/payment-confirmed \
-  -H "Content-Type: application/json" \
-  -H "X-Webhook-Secret: dev-webhook-secret-change-me" \
-  -H "Idempotency-Key: pay-invoice-001" \
-  -d "{}"
-```
 
 ## API
 
@@ -139,3 +132,7 @@ Response includes `assignments` (3 providers) and `skipped` if quota blocked any
 ## Configuration
 
 Rules live in `src/lib/rules.ts` (`MANDATORY_PROVIDER_NUMBERS`, `FAIR_POOL_PROVIDER_NUMBERS`, `PROVIDERS_PER_LEAD`).
+
+### Author
+
+Paridhi Goel
