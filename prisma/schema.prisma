@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum ServiceType {
+  SERVICE_1
+  SERVICE_2
+  SERVICE_3
+}
+
+enum LeadStatus {
+  NEW
+  ASSIGNED
+  CLOSED
+}
+
+model Provider {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  providerNumber   Int      @unique
+  name             String
+  email            String   @unique
+  active           Boolean  @default(true)
+  monthlyLeadQuota Int      @default(10)
+  createdAt        DateTime @default(now())
+
+  mandatoryRules  MandatoryAssignmentRule[]
+  assignments     LeadAssignment[]
+  monthlyUsage    ProviderMonthlyUsage[]
+}
+
+/// Business rule: this provider MUST receive every lead for this service type
+model MandatoryAssignmentRule {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  providerId  String      @db.ObjectId
+  serviceType ServiceType
+  provider    Provider    @relation(fields: [providerId], references: [id])
+
+  @@unique([providerId, serviceType])
+}
+
+model Lead {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  customerName    String
+  phone           String
+  phoneNormalized String
+  city            String
+  email           String?
+  serviceType     ServiceType
+  description     String
+  status          LeadStatus  @default(NEW)
+  createdAt       DateTime    @default(now())
+
+  assignments LeadAssignment[]
+
+  @@unique([phoneNormalized, serviceType])
+}
+
+model LeadAssignment {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  leadId     String   @db.ObjectId
+  providerId String   @db.ObjectId
+  mandatory  Boolean  @default(false)
+  assignedAt DateTime @default(now())
+
+  lead     Lead     @relation(fields: [leadId], references: [id])
+  provider Provider @relation(fields: [providerId], references: [id])
+
+  @@unique([leadId, providerId])
+  @@index([providerId, assignedAt])
+}
+
+/// Per-calendar-month assignment count (enforces monthlyLeadQuota under concurrency)
+model ProviderMonthlyUsage {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  providerId      String   @db.ObjectId
+  monthKey        String
+  assignmentCount Int      @default(0)
+  provider        Provider @relation(fields: [providerId], references: [id])
+
+  @@unique([providerId, monthKey])
+  @@index([monthKey])
+}
+
+/// Persisted round-robin cursor per service fair pool (survives restarts)
+model FairRotationState {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  serviceType ServiceType @unique
+  nextIndex   Int         @default(0)
+}
+
+/// Idempotent payment webhook processing (quota reset only via webhook)
+model WebhookProcessedEvent {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  idempotencyKey String   @unique
+  eventType      String
+  processedAt    DateTime @default(now())
+}
