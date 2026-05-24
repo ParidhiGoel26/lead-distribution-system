@@ -42,7 +42,6 @@ Fair allocation uses a **persisted cursor** (`FairRotationState`) — not random
 ```bash
 npm install
 docker compose up -d
-cp .env.example .env
 npx prisma db push
 npm run db:seed
 npm run dev
